@@ -1,20 +1,30 @@
 defmodule Sphinx.Plugs do
   import Plug.Conn
 
+  alias Sphinx.Util
+
   @config Application.get_all_env(:sphinx)
 
   @default_options [
     actor_fetcher: @config[:actor_fetcher] || &Sphinx.Plugs._default_current_user_fetcher/1,
+
+    # note: passing common authorizer on config would turn of inferring
     authorizer: @config[:authorizer],
+
+    # this one is required
     repo: @config[:repo],
 
-    # we can fetch resource either by id and module using repo.get!(model, id), or by calling
-    # resource_fetcher with conn
+    # we can fetch resource either by id and module using `repo.get!(model, id)`, or by calling
+    # `resource_fetcher` with conn
     id_key: "id",
     model: nil,
-    collection: [],
 
-    resource_fetcher: nil
+    resource_fetcher: nil,
+
+    # actions, which are should authorized by Module itself, not by instance of it
+    # `:index`, `:new`, `:create` actions are always authorized by Module itself, you should
+    # provide `resource_fetcher` if you don't want this behaviour.
+    collection: []
   ]
 
   @authorization_status_key :sphinx_authorization_status
@@ -32,11 +42,27 @@ defmodule Sphinx.Plugs do
     end
   end
 
-  def skip_authorization(conn, _) do
-    put_private(conn, @authorization_status_key, :skipped)
+  def skip_authorization(conn, opts) do
+    case Util.should_apply?(conn, opts) do
+      true -> put_private(conn, @authorization_status_key, :skipped)
+      false -> conn
+    end
   end
 
   def authorize(conn, opts) do
+    cond do
+      # check if it's already skipped
+      conn.private[@authorization_status_key] == :skipped -> conn
+
+      # if we should apply action
+      Util.should_apply?(conn, opts) -> _authorize(conn, opts)
+
+      # otherwise, just pass conn
+      true -> conn
+    end
+  end
+
+  defp _authorize(conn, opts) do
     opts = Keyword.merge(@default_options, opts)
 
     if is_nil(opts[:repo]) do
@@ -67,22 +93,26 @@ defmodule Sphinx.Plugs do
     end
   end
 
-  defp get_authorizer(conn, nil), do: infer_module_with_suffix(conn, "Authorizer")
+  defp get_authorizer(conn, nil), do: Util.infer_module_with_suffix(conn, "Authorizer")
   defp get_authorizer(_, authorizer), do: authorizer
 
   defp fetch_resource(conn, opts) do
     action = conn.private.phoenix_action
     collection_actions = [:index, :new, :create] ++ List.wrap(opts[:collection])
-    model = opts[:model] || infer_module_with_suffix(conn, "")
+    model = opts[:model] || Util.infer_module_with_suffix(conn, "")
 
     cond do
+      # we've got a resource_fetcher
       is_function(opts[:resource_fetcher]) -> opts[:resource_fetcher].(conn)
 
+      # we've got a resource_fetcher for given action
       Keyword.keyword?(opts[:resource_fetcher]) && Keyword.has_key?(opts[:resource_fetcher], action) ->
         Keyword.get(opts[:resource_fetcher], action).(conn)
 
+      # authorize this one by model itself
       model && action in collection_actions -> model
 
+      # load resource from repo, repo is made sure to exist here
       model && opts[:id_key] -> opts[:repo].get!(model, conn.params[opts[:id_key]])
 
       model ->
@@ -92,14 +122,5 @@ defmodule Sphinx.Plugs do
         raise Sphinx.MissingOptionError, message: "Please define model key when calling plug.
           Alternatively, follow naming convention, i.e. UserController -> User"
     end
-  end
-
-  defp infer_module_with_suffix(%Plug.Conn{private: %{phoenix_controller: controller}}, suffix) do
-    possible_module = controller |> to_string() |> String.replace_suffix("Controller", suffix)
-
-    # try also by removing .Api. namespace
-    [possible_module, String.replace(possible_module, ".Api.", ".")]
-    |> Enum.map(&String.to_atom/1)
-    |> Enum.find(&Code.ensure_loaded?/1)
   end
 end
