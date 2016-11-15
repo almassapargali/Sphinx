@@ -17,7 +17,7 @@ defmodule Sphinx.Mixfile do
   def application, do: []
 
   defp deps do
-    [:plug: "~> 1.0"]
+    [plug: "~> 1.0"]
   end
 
   defp description do
