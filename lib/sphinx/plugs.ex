@@ -3,33 +3,31 @@ defmodule Sphinx.Plugs do
 
   alias Sphinx.Util
 
-  @config Application.get_all_env(:sphinx)
+  defp _default_options() do
+    [
+      actor_fetcher: Application.get_env(:sphinx, :actor_fetcher) || &( &1.assigns[:current_user] ),
 
-  @default_options [
-    actor_fetcher: @config[:actor_fetcher] || &Sphinx.Plugs._default_current_user_fetcher/1,
+      # note: passing common authorizer on config would turn of inferring
+      authorizer: Application.get_env(:sphinx, :authorizer),
 
-    # note: passing common authorizer on config would turn of inferring
-    authorizer: @config[:authorizer],
+      # this one is required
+      repo: Application.get_env(:sphinx, :repo),
 
-    # this one is required
-    repo: @config[:repo],
+      # we can fetch resource either by id and module using `repo.get!(model, id)`, or by calling
+      # `resource_fetcher` with conn
+      id_key: "id",
+      model: nil,
 
-    # we can fetch resource either by id and module using `repo.get!(model, id)`, or by calling
-    # `resource_fetcher` with conn
-    id_key: "id",
-    model: nil,
+      resource_fetcher: nil,
 
-    resource_fetcher: nil,
-
-    # actions, which are should authorized by Module itself, not by instance of it
-    # `:index`, `:new`, `:create` actions are always authorized by Module itself, you should
-    # provide `resource_fetcher` if you don't want this behaviour.
-    collection: []
-  ]
+      # actions, which are should authorized by Module itself, not by instance of it
+      # `:index`, `:new`, `:create` actions are always authorized by Module itself, you should
+      # provide `resource_fetcher` if you don't want this behaviour.
+      collection: []
+    ]
+  end
 
   @authorization_status_key :sphinx_authorization_status
-
-  def _default_current_user_fetcher(conn), do: conn.assigns[:current_user]
 
   def ensure_authorization(conn, _) do
     register_before_send conn, fn conn ->
@@ -63,7 +61,7 @@ defmodule Sphinx.Plugs do
   end
 
   defp _authorize(conn, opts) do
-    opts = Keyword.merge(@default_options, opts)
+    opts = Keyword.merge(_default_options(), opts)
 
     if is_nil(opts[:repo]) do
       raise Sphinx.MissingOptionError, message: "Value for repo option is missing.
