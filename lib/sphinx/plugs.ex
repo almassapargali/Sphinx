@@ -10,7 +10,7 @@ defmodule Sphinx.Plugs do
       # note: passing common authorizer on config would turn of inferring
       authorizer: Application.get_env(:sphinx, :authorizer),
 
-      # this one is required
+      # repo is called `get!` function with module and id as parameter
       repo: Application.get_env(:sphinx, :repo),
 
       # we can fetch resource either by id and module using `repo.get!(model, id)`, or by calling
@@ -63,11 +63,6 @@ defmodule Sphinx.Plugs do
   defp _authorize(conn, opts) do
     opts = Keyword.merge(_default_options(), opts)
 
-    if is_nil(opts[:repo]) do
-      raise Sphinx.MissingOptionError, message: "Value for repo option is missing.
-        Please define it either when calling plug, or in app configs."
-    end
-
     actor = opts[:actor_fetcher].(conn)
 
     authorizer = get_authorizer(conn, opts[:authorizer])
@@ -110,10 +105,14 @@ defmodule Sphinx.Plugs do
       # authorize this one by model itself
       model && action in collection_actions -> model
 
-      # load resource from repo, repo is made sure to exist here
-      model && opts[:id_key] -> opts[:repo].get!(model, conn.params[opts[:id_key]])
+      # load resource from repo
+      model && opts[:id_key] && opts[:repo] -> opts[:repo].get!(model, conn.params[opts[:id_key]])
 
-      model ->
+      is_nil(opts[:repo]) ->
+        raise Sphinx.MissingOptionError, message: "Value for repo option is missing.
+          Please define it either when calling plug, or in app configs."
+
+      is_nil(opts[:id_key]) ->
         raise Sphinx.MissingOptionError, message: "Value for :id_key is missing"
 
       true ->
