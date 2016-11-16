@@ -85,9 +85,9 @@ defmodule Sphinx.Plugs do
         |> assign(:resource, resource)
         |> put_private(@authorization_status_key, :authorized)
 
-      false -> raise Sphinx.NotAuthorized
+      false -> raise Sphinx.NotAuthorizedError
 
-      {false, reason} -> raise Sphinx.NotAuthorized, message: reason
+      {false, reason} -> raise Sphinx.NotAuthorizedError, message: reason
     end
   end
 

@@ -3,7 +3,7 @@ defmodule Sphinx.AuthorizationNotPerformedError do
     Please either authorize resource, or skip it with :skip_authorization."
 end
 
-defmodule Sphinx.NotAuthorized do
+defmodule Sphinx.NotAuthorizedError do
   defexception plug_status: 403, message: "You do not have access to this resource."
 end
 
