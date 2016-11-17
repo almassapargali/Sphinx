@@ -1,4 +1,6 @@
 defmodule Sphinx.Util do
+  @moduledoc false
+
   def should_apply?(%Plug.Conn{private: %{phoenix_action: action}}, opts) do
     case {opts[:only], opts[:except]} do
       {nil, nil} -> true
