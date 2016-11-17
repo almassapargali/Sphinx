@@ -51,7 +51,7 @@ Say you want to authorize your `PostController`:
 
   3. Profit!
 
-  See [docs](http://hexdocs.pm/sphinx) for more options.
+  See [plug docs](https://hexdocs.pm/sphinx/Sphinx.Plugs.html#authorize/2) for more options.
 
 ## Ensuring authorization
 
