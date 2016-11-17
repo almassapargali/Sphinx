@@ -14,8 +14,7 @@ defmodule Sphinx.Plugs do
     [
       actor_fetcher: Application.get_env(:sphinx, :actor_fetcher) || &( &1.assigns[:current_user] ),
 
-      # note: passing common authorizer on config would turn of inferring
-      authorizer: Application.get_env(:sphinx, :authorizer),
+      authorizer: nil,
 
       # repo is called `get!` function with module and id as parameter
       repo: Application.get_env(:sphinx, :repo),
