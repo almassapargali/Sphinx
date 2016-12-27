@@ -58,7 +58,7 @@ Say you want to authorize your `PostController`:
 If you want to make sure all your requests are authorized, add this in your pipelines:
 
 ```elixir
-import Sphinx.Plugx
+import Sphinx.Plugs
 
 plug :ensure_authorization
 ```
