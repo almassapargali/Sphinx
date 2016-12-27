@@ -41,11 +41,15 @@ defmodule Sphinx.Plugs do
   """
   def ensure_authorization(conn, _) do
     register_before_send conn, fn conn ->
-      case conn.private[@authorization_status_key] do
-        :skipped -> conn
-        :authorized -> conn
-        _ ->
-          raise Sphinx.AuthorizationNotPerformedError
+      if conn.status in 200..399 do
+        case conn.private[@authorization_status_key] do
+          :skipped -> conn
+          :authorized -> conn
+          _ ->
+            raise Sphinx.AuthorizationNotPerformedError
+        end
+      else
+        conn
       end
     end
   end
