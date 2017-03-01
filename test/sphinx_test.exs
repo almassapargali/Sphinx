@@ -163,6 +163,22 @@ defmodule SphinxTest do
     # the fact that it haven't rised already an assertion
   end
 
+  test "it calls actor_fetcher pair if passed", %{conn: conn} do
+    defmodule ModProfileAuthorizer do
+      def authorize?(%Profile{}, :index, User), do: true
+    end
+
+    defmodule Fetcher do
+      def fetch(_), do: %Profile{}
+    end
+
+    conn
+    |> put_private(:phoenix_action, :index)
+    |> authorize(authorizer: ModProfileAuthorizer, actor_fetcher: {Fetcher, :fetch})
+
+    # the fact that it haven't rised already an assertion
+  end
+
   # Action tests
 
   test "it passes phoenix_action as action to authorizer", %{conn: conn} do

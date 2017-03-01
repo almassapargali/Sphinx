@@ -115,9 +115,9 @@ defmodule Sphinx.Plugs do
   ## Getting actor
 
   By default, actor is taken from `:current_user` field of `conn` assigns. You can override
-  this by providing `:actor_fetcher` function either in app's config or when calling plug.
-  This function would be called with current `conn` and result will be passed to authorizer
-  as an actor.
+  this by providing `:actor_fetcher` function or {Module, :function_name} pair either in
+  app's config or when calling plug. This function would be called with current `conn` and
+  result will be passed to authorizer as an actor.
 
   ## Action
 
@@ -147,7 +147,7 @@ defmodule Sphinx.Plugs do
 
   All options are optional if naming conventions are preserved and repo is given in app's config.
 
-  * `:actor_fetcher` - function to use for getting actor, called with conn.
+  * `:actor_fetcher` - function/module-function pair to use for getting actor, called with conn.
   * `:authorizer` - authorize module to use.
   * `:resource_fetcher` - function, or keyword with function values. If given function,
     all actions will use that function to fetch resource, if given keyword, functions
@@ -182,7 +182,7 @@ defmodule Sphinx.Plugs do
   defp _authorize(conn, opts) do
     opts = Keyword.merge(_default_options(), opts)
 
-    actor = opts[:actor_fetcher].(conn)
+    actor = fetch_actor(conn, opts[:actor_fetcher])
 
     authorizer = get_authorizer(conn, opts[:authorizer])
 
@@ -203,6 +203,11 @@ defmodule Sphinx.Plugs do
 
       {false, reason} -> raise Sphinx.NotAuthorizedError, message: reason
     end
+  end
+
+  defp fetch_actor(conn, fetcher) when is_function(fetcher), do: fetcher.(conn)
+  defp fetch_actor(conn, {module, function}) do
+    apply(module, function, [conn])
   end
 
   defp get_authorizer(conn, nil), do: Util.infer_module_with_suffix(conn, "Authorizer")
